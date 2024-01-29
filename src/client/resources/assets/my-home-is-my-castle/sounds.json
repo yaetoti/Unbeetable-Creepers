@@ -1,0 +1,14 @@
+{
+    "woo": {
+        "subtitle": "subtitles.my-home-is-my-castle.woo",
+        "sounds": [
+            "my-home-is-my-castle:woo"
+        ]
+    },
+    "aaa": {
+        "subtitle": "subtitles.my-home-is-my-castle.aaa",
+        "sounds": [
+            "my-home-is-my-castle:aaa"
+        ]
+    }
+}
