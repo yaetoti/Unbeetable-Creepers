@@ -1,0 +1,14 @@
+{
+    "woo": {
+        "subtitle": "subtitles.unbeetable.woo",
+        "sounds": [
+            "unbeetable:woo"
+        ]
+    },
+    "aaa": {
+        "subtitle": "subtitles.unbeetable.aaa",
+        "sounds": [
+            "unbeetable:aaa"
+        ]
+    }
+}

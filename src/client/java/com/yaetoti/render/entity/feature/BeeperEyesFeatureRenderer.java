@@ -1,6 +1,6 @@
 package com.yaetoti.render.entity.feature;
 
-import com.yaetoti.MyHomeIsMyCastle;
+import com.yaetoti.ModEntry;
 import com.yaetoti.entity.BeeperEntity;
 import com.yaetoti.render.entity.model.BeeperEntityModel;
 import net.fabricmc.api.EnvType;
@@ -12,7 +12,7 @@ import net.minecraft.client.render.entity.feature.FeatureRendererContext;
 
 @Environment(value= EnvType.CLIENT)
 public class BeeperEyesFeatureRenderer extends EyesFeatureRenderer<BeeperEntity, BeeperEntityModel<BeeperEntity>> {
-    private static final RenderLayer SKIN = RenderLayer.getEyes(MyHomeIsMyCastle.IdOf("textures/entity/beeper/beeper_eyes.png"));
+    private static final RenderLayer SKIN = RenderLayer.getEyes(ModEntry.IdOf("textures/entity/beeper/beeper_eyes.png"));
 
     public BeeperEyesFeatureRenderer(FeatureRendererContext<BeeperEntity, BeeperEntityModel<BeeperEntity>> featureRendererContext) {
         super(featureRendererContext);

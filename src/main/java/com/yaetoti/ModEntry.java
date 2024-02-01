@@ -7,8 +7,8 @@ import net.minecraft.util.Identifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class MyHomeIsMyCastle implements ModInitializer {
-	public static final String MODID = "my-home-is-my-castle";
+public class ModEntry implements ModInitializer {
+	public static final String MODID = "unbeetable";
     public static final Logger LOGGER = LoggerFactory.getLogger(MODID);
 
 	@Override

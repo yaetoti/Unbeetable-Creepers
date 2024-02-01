@@ -1,29 +1,29 @@
 {
 	"schemaVersion": 1,
-	"id": "my-home-is-my-castle",
-	"version": "${version}",
-	"name": "My Home Is My Castle",
-	"description": "This is an example description! Tell everyone what your mod is about!",
+	"id": "unbeetable",
+	"version": "1.0.0+1.20.4",
+	"name": "Unbeetable Creepers",
+	"description": "TODO Description",
 	"authors": [
-		"Me!"
+		"yaetoti___"
 	],
 	"contact": {
-		"homepage": "https://fabricmc.net/",
-		"sources": "https://github.com/FabricMC/fabric-example-mod"
+		"homepage": "TODO Mod Page",
+		"sources": "https://github.com/yaetoti/Unbeetable-Creepers"
 	},
-	"license": "CC0-1.0",
-	"icon": "assets/my-home-is-my-castle/icon.png",
+	"license": "MIT",
+	"icon": "assets/unbeetable/icon.png",
 	"environment": "*",
 	"entrypoints": {
 		"main": [
-			"com.yaetoti.MyHomeIsMyCastle"
+			"com.yaetoti.ModEntry"
 		],
 		"client": [
-			"com.yaetoti.MyHomeIsMyCastleClient"
+			"com.yaetoti.ModClientEntry"
 		]
 	},
 	"mixins": [
-		"my-home-is-my-castle.mixins.json"
+		"unbeetable.mixins.json"
 	],
 	"depends": {
 		"fabricloader": ">=0.15.6",

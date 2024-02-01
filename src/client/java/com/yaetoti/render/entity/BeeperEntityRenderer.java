@@ -3,7 +3,7 @@
  */
 package com.yaetoti.render.entity;
 
-import com.yaetoti.MyHomeIsMyCastle;
+import com.yaetoti.ModEntry;
 import com.yaetoti.entity.BeeperEntity;
 import com.yaetoti.render.entity.feature.BeeperChargeFeatureRenderer;
 import com.yaetoti.render.entity.feature.BeeperEyesFeatureRenderer;
@@ -19,7 +19,7 @@ import net.minecraft.util.math.MathHelper;
 
 @Environment(value=EnvType.CLIENT)
 public class BeeperEntityRenderer extends MobEntityRenderer<BeeperEntity, BeeperEntityModel<BeeperEntity>> {
-    private static final Identifier TEXTURE = new Identifier(MyHomeIsMyCastle.MODID, "textures/entity/beeper/beeper.png");
+    private static final Identifier TEXTURE = new Identifier(ModEntry.MODID, "textures/entity/beeper/beeper.png");
 
     public BeeperEntityRenderer(EntityRendererFactory.Context context) {
         super(context, new BeeperEntityModel<>(context.getPart(EntityModelLayers.BEE)), 0.4f);

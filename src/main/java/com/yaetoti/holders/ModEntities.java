@@ -1,6 +1,6 @@
 package com.yaetoti.holders;
 
-import com.yaetoti.MyHomeIsMyCastle;
+import com.yaetoti.ModEntry;
 import com.yaetoti.entity.BeeperEntity;
 import net.fabricmc.fabric.api.object.builder.v1.entity.FabricDefaultAttributeRegistry;
 import net.fabricmc.fabric.api.object.builder.v1.entity.FabricEntityTypeBuilder;
@@ -13,7 +13,7 @@ import net.minecraft.registry.Registry;
 public class ModEntities {
     public static final EntityType<BeeperEntity> BEEPER = Registry.register(
             Registries.ENTITY_TYPE,
-            MyHomeIsMyCastle.IdOf("beeper"),
+            ModEntry.IdOf("beeper"),
             FabricEntityTypeBuilder.<BeeperEntity>create(SpawnGroup.MONSTER, BeeperEntity::new)
                     .dimensions(EntityDimensions.fixed(0.7f, 0.6f))
                     .build());
