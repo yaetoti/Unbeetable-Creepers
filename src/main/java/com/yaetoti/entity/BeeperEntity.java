@@ -4,13 +4,17 @@
 package com.yaetoti.entity;
 
 import com.yaetoti.entity.ai.control.BeeperFlightMoveControl;
-import com.yaetoti.entity.ai.goals.BeeperWanderAroundGoal;
-import com.yaetoti.entity.ai.goals.RageAttackGoal;
+import com.yaetoti.entity.ai.goals.BeeperFleeGoal;
+import com.yaetoti.entity.ai.goals.BeeperFollowGoal;
+import com.yaetoti.entity.ai.goals.BeeperWanderGoal;
 import com.yaetoti.holders.ModEntities;
 import net.minecraft.block.BlockState;
 import net.minecraft.client.render.entity.feature.SkinOverlayOwner;
 import net.minecraft.entity.*;
-import net.minecraft.entity.ai.goal.*;
+import net.minecraft.entity.ai.goal.ActiveTargetGoal;
+import net.minecraft.entity.ai.goal.Goal;
+import net.minecraft.entity.ai.goal.LookAroundGoal;
+import net.minecraft.entity.ai.goal.SwimGoal;
 import net.minecraft.entity.ai.pathing.BirdNavigation;
 import net.minecraft.entity.ai.pathing.EntityNavigation;
 import net.minecraft.entity.ai.pathing.PathNodeType;
@@ -21,7 +25,6 @@ import net.minecraft.entity.data.DataTracker;
 import net.minecraft.entity.data.TrackedData;
 import net.minecraft.entity.data.TrackedDataHandlerRegistry;
 import net.minecraft.entity.effect.StatusEffectInstance;
-import net.minecraft.entity.mob.CreeperEntity;
 import net.minecraft.entity.mob.HostileEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.fluid.Fluid;
@@ -32,15 +35,32 @@ import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundEvent;
 import net.minecraft.sound.SoundEvents;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.MathHelper;
+import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldView;
+import net.minecraft.world.event.GameEvent;
 
 import java.util.Collection;
 
 public class BeeperEntity extends HostileEntity implements Flutterer, SkinOverlayOwner {
-    private static final TrackedData<Boolean> CHARGED = DataTracker.registerData(CreeperEntity.class, TrackedDataHandlerRegistry.BOOLEAN);
+    private static final TrackedData<Boolean> CHARGED = DataTracker.registerData(BeeperEntity.class, TrackedDataHandlerRegistry.BOOLEAN);
+    private static final TrackedData<Float> FUSE_SPEED = DataTracker.registerData(BeeperEntity.class, TrackedDataHandlerRegistry.FLOAT);
     private int ticksInsideWater;
     private float explosionRadius = 2.0f;
+
+    // Fuse
+    // TODO config
+    private static final float FUSE_TIME = 30;
+    private float lastFuseTime;
+    private float currentFuseTime;
+
+    // Memories (Variables commonly used by goals)
+    private Vec3d targetPos;
+    private Vec3d mobPos;
+    private double targetDistance;
+    private boolean spotted;
+    private float annoyance;
 
     public BeeperEntity(EntityType<? extends BeeperEntity> entityType, World world) {
         super(entityType, world);
@@ -51,6 +71,10 @@ public class BeeperEntity extends HostileEntity implements Flutterer, SkinOverla
         this.setPathfindingPenalty(PathNodeType.WATER_BORDER, 16.0f);
         this.setPathfindingPenalty(PathNodeType.COCOA, -1.0f);
         this.setPathfindingPenalty(PathNodeType.FENCE, -1.0f);
+
+        // annoyance = getRandom().nextFloat();
+        annoyance = 0.0f;
+        System.out.println("Annoyance: " + annoyance);
     }
 
     public BeeperEntity(World world) {
@@ -66,70 +90,84 @@ public class BeeperEntity extends HostileEntity implements Flutterer, SkinOverla
                 .add(EntityAttributes.GENERIC_ATTACK_DAMAGE, 0);
     }
 
-    // Goals
+    // Behaviour
 
     @Override
     protected void initGoals() {
         super.initGoals();
 
         goalSelector.add(0, new SwimGoal(this));
-        goalSelector.add(1, new RageAttackGoal(this, 12.0, 16.0));
-        goalSelector.add(2, new MeleeAttackGoal(this, 6.0, false));
-        goalSelector.add(3, new BeeperWanderAroundGoal(this, 3.0));
-        goalSelector.add(4, new LookAroundGoal(this));
+
+        // goalSelector.add(1, new BeeperRageGoal(this, 12.0, Range.open(10.0, 16.0)));
+        goalSelector.add(2, new BeeperFleeGoal(this, 16.0f, 8.0, 12.0));
+        // goalSelector.add(3, new BeeperFuseGoal(this));
+        goalSelector.add(4, new BeeperFollowGoal(this, 6.0, true));
+        goalSelector.add(5, new BeeperWanderGoal(this, 3.0));
+
+        goalSelector.add(6, new LookAroundGoal(this));
         targetSelector.add(1, new ActiveTargetGoal<>(this, PlayerEntity.class, false));
+        // TODO revenge goal
+    }
+
+    @Override
+    public void tick() {
+        // TODO kludge
+        // Update memories
+        updateMemories();
+
+        // Handle fuse
+        if (isAlive()) {
+            lastFuseTime = currentFuseTime;
+            float fuseSpeed = getFuseSpeed();
+            if (fuseSpeed > 0 && this.currentFuseTime == 0.0f) {
+                this.playSound(SoundEvents.ENTITY_CREEPER_PRIMED, 1.0f, 0.5f);
+                this.emitGameEvent(GameEvent.PRIME_FUSE);
+            }
+
+            this.currentFuseTime += fuseSpeed;
+            if (this.currentFuseTime < 0) {
+                this.currentFuseTime = 0;
+            }
+
+            if (this.currentFuseTime >= FUSE_TIME) {
+                this.currentFuseTime = FUSE_TIME;
+                this.explode();
+            }
+        }
+
+        super.tick();
+    }
+
+    private void updateMemories() {
+        LivingEntity targetEntity = getTarget();
+        if (targetEntity == null || !targetEntity.isAlive()) {
+            return;
+        }
+
+        targetPos = targetEntity.getEyePos();
+        mobPos = getEyePos();
+        targetDistance = getEyePos().distanceTo(targetPos);
+
+        Vec3d lookVector = targetEntity.getRotationVector().normalize();
+        Vec3d mobVector = mobPos.subtract(targetPos).normalize();
+        double angleCos = lookVector.dotProduct(mobVector);
+        spotted = angleCos >= 0.5;
+    }
+
+    @Override
+    protected void mobTick() {
+        this.ticksInsideWater = this.isInsideWaterOrBubbleColumn() ? ++this.ticksInsideWater : 0;
+        if (this.ticksInsideWater > 20) {
+            this.damage(this.getDamageSources().drown(), 1.0f);
+        }
     }
 
     public void setTargetingEnabled(boolean enabled) {
+        // TODO kludge
         targetSelector.setControlEnabled(Goal.Control.TARGET, enabled);
     }
 
-    // Data
-
-    @Override
-    protected void initDataTracker() {
-        super.initDataTracker();
-        dataTracker.startTracking(CHARGED, false);
-    }
-
-    @Override
-    public void writeCustomDataToNbt(NbtCompound nbt) {
-        super.writeCustomDataToNbt(nbt);
-        if (dataTracker.get(CHARGED)) {
-            nbt.putBoolean("powered", true);
-        }
-        nbt.putByte("ExplosionRadius", (byte)this.explosionRadius);
-    }
-
-    @Override
-    public void readCustomDataFromNbt(NbtCompound nbt) {
-        super.readCustomDataFromNbt(nbt);
-        this.dataTracker.set(CHARGED, nbt.getBoolean("powered"));
-        if (nbt.contains("ExplosionRadius", NbtElement.NUMBER_TYPE)) {
-            this.explosionRadius = nbt.getByte("ExplosionRadius");
-        }
-    }
-
-    public void setCharged(boolean charged) {
-        dataTracker.set(CHARGED, charged);
-    }
-
-    public boolean isCharged() {
-        return dataTracker.get(CHARGED);
-    }
-
-    // Behaviour
-
-    @Override
-    public void onStruckByLightning(ServerWorld world, LightningEntity lightning) {
-        super.onStruckByLightning(world, lightning);
-        setCharged(true);
-    }
-
-    @Override
-    public boolean shouldRenderOverlay() {
-        return isCharged();
-    }
+    // AI misc
 
     @Override
     public float getPathfindingFavor(BlockPos pos, WorldView world) {
@@ -161,6 +199,141 @@ public class BeeperEntity extends HostileEntity implements Flutterer, SkinOverla
     }
 
     @Override
+    public void onStruckByLightning(ServerWorld world, LightningEntity lightning) {
+        super.onStruckByLightning(world, lightning);
+        setCharged(true);
+    }
+
+    @Override
+    protected void fall(double heightDifference, boolean onGround, BlockState state, BlockPos landedPosition) {
+    }
+
+    @Override
+    public boolean isFlappingWings() {
+        return this.isInAir();
+    }
+
+    @Override
+    protected void swimUpward(TagKey<Fluid> fluid) {
+        this.setVelocity(this.getVelocity().add(0.0, 0.01, 0.0));
+    }
+
+    @Override
+    public boolean isInAir() {
+        return !this.isOnGround();
+    }
+
+    @Override
+    protected float getOffGroundSpeed() {
+        // If you not override this ugly son of a dirty rat then air movement speed will be set to 0.2. Hours wasted: 3
+        // See LivingEntity::getOffGroundSpeed
+        return getMovementSpeed() * 0.01f;
+    }
+
+    @Override
+    protected void applyDamage(DamageSource source, float amount) {
+        super.applyDamage(source, amount);
+        if (source.getAttacker() == getTarget()) {
+            if (getHealth() - amount <= 0) {
+                setAnnoyance(1.0f);
+            } else {
+                increaseAnnoyance(0.1f);
+            }
+        }
+    }
+
+    // Data
+
+    @Override
+    protected void initDataTracker() {
+        super.initDataTracker();
+        dataTracker.startTracking(CHARGED, false);
+        dataTracker.startTracking(FUSE_SPEED, 0.0f);
+    }
+
+    @Override
+    public void writeCustomDataToNbt(NbtCompound nbt) {
+        super.writeCustomDataToNbt(nbt);
+        if (dataTracker.get(CHARGED)) {
+            nbt.putBoolean("powered", true);
+        }
+        nbt.putByte("ExplosionRadius", (byte)this.explosionRadius);
+    }
+
+    @Override
+    public void readCustomDataFromNbt(NbtCompound nbt) {
+        super.readCustomDataFromNbt(nbt);
+        this.dataTracker.set(CHARGED, nbt.getBoolean("powered"));
+        if (nbt.contains("ExplosionRadius", NbtElement.NUMBER_TYPE)) {
+            this.explosionRadius = nbt.getByte("ExplosionRadius");
+        }
+    }
+
+    // Charged
+
+    public void setCharged(boolean charged) {
+        dataTracker.set(CHARGED, charged);
+    }
+
+    public boolean isCharged() {
+        return dataTracker.get(CHARGED);
+    }
+
+    // Fuse
+
+    public float getClientFuseTime(float timeDelta) {
+        return MathHelper.lerp(timeDelta, lastFuseTime, currentFuseTime) / (FUSE_TIME - 2);
+    }
+
+    public float getFuseSpeed() {
+        return dataTracker.get(FUSE_SPEED);
+    }
+
+    public void setFuseSpeed(float fuseSpeed) {
+        dataTracker.set(FUSE_SPEED, fuseSpeed);
+    }
+
+    // Memories
+    public Vec3d getTargetPos() {
+        return targetPos;
+    }
+
+    public Vec3d getMobPos() {
+        return mobPos;
+    }
+
+    public double getTargetDistance() {
+        return targetDistance;
+    }
+
+    public boolean isSpotted() {
+        return spotted;
+    }
+
+    public float getAnnoyance() {
+        return annoyance;
+    }
+
+    public void setAnnoyance(float annoyance) {
+        this.annoyance = annoyance;
+    }
+
+    public void increaseAnnoyance(float annoyance) {
+        System.out.println("ANNOYING: " + this.annoyance);
+        this.annoyance += annoyance;
+        if (this.annoyance > 1.0f) {
+            this.annoyance = 1.0f;
+        }
+    }
+
+    // Behaviour
+
+    @Override
+    public boolean shouldRenderOverlay() {
+        return isCharged();
+    }
+
+    @Override
     protected void playStepSound(BlockPos pos, BlockState state) {
     }
 
@@ -185,51 +358,18 @@ public class BeeperEntity extends HostileEntity implements Flutterer, SkinOverla
     }
 
     @Override
-    protected float getActiveEyeHeight(EntityPose pose, EntityDimensions dimensions) {
-        return dimensions.height * 0.5f;
-    }
-
-    @Override
-    protected void fall(double heightDifference, boolean onGround, BlockState state, BlockPos landedPosition) {
-    }
-
-    @Override
-    public boolean isFlappingWings() {
-        return this.isInAir();
-    }
-
-    @Override
     public EntityGroup getGroup() {
         return EntityGroup.ARTHROPOD;
     }
 
     @Override
-    protected void mobTick() {
-        this.ticksInsideWater = this.isInsideWaterOrBubbleColumn() ? ++this.ticksInsideWater : 0;
-        if (this.ticksInsideWater > 20) {
-            this.damage(this.getDamageSources().drown(), 1.0f);
-        }
-    }
-
-    @Override
-    protected void swimUpward(TagKey<Fluid> fluid) {
-        this.setVelocity(this.getVelocity().add(0.0, 0.01, 0.0));
-    }
-
-    @Override
-    public boolean isInAir() {
-        return !this.isOnGround();
-    }
-
-    @Override
-    protected float getOffGroundSpeed() {
-        // If you not override this ugly son of a dirty rat then air movement speed will be set to 0.2. Hours wasted: 3
-        // See LivingEntity::getOffGroundSpeed
-        return getMovementSpeed() * 0.01f;
+    protected float getActiveEyeHeight(EntityPose pose, EntityDimensions dimensions) {
+        return dimensions.height * 0.5f;
     }
 
     public void explode() {
         if (!this.getWorld().isClient) {
+            // TODO config
             float f = this.isCharged() ? 2.0f : 1.0f;
             this.dead = true;
             this.discard();
@@ -241,7 +381,8 @@ public class BeeperEntity extends HostileEntity implements Flutterer, SkinOverla
     private void spawnEffectsCloud() {
         Collection<StatusEffectInstance> collection = this.getStatusEffects();
         if (!collection.isEmpty()) {
-            var areaEffectCloudEntity = new AreaEffectCloudEntity(this.getWorld(), this.getX(), this.getY(), this.getZ());
+            AreaEffectCloudEntity areaEffectCloudEntity = new AreaEffectCloudEntity(this.getWorld(), this.getX(), this.getY(), this.getZ());
+            // TODO config
             float f = this.isCharged() ? 1.5f : 1.0f;
             areaEffectCloudEntity.setRadius(2.5f * f);
             areaEffectCloudEntity.setRadiusOnUse(-0.2f);

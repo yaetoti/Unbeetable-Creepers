@@ -10,11 +10,11 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.EnumSet;
 
-public class BeeperWanderAroundGoal extends Goal {
+public class BeeperWanderGoal extends Goal {
     private final BeeperEntity mob;
     private final double speed;
 
-    public BeeperWanderAroundGoal(BeeperEntity mob, double speed) {
+    public BeeperWanderGoal(BeeperEntity mob, double speed) {
         this.setControls(EnumSet.of(Goal.Control.MOVE));
         this.mob = mob;
         this.speed = speed;

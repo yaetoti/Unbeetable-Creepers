@@ -1,5 +1,6 @@
 package com.yaetoti.entity.ai.goals;
 
+import com.google.common.collect.Range;
 import com.yaetoti.entity.BeeperEntity;
 import com.yaetoti.holders.ModSounds;
 import net.minecraft.entity.LivingEntity;
@@ -9,10 +10,10 @@ import net.minecraft.predicate.entity.EntityPredicates;
 
 import java.util.EnumSet;
 
-public class RageAttackGoal extends Goal {
+public class BeeperRageGoal extends Goal {
     protected final BeeperEntity mob;
     private final double speed;
-    private final double rageDistance;
+    private final Range<Double> attackRange;
     private Path path;
     private boolean lostEyeContact;
     LivingEntity lastTarget;
@@ -21,10 +22,10 @@ public class RageAttackGoal extends Goal {
     private double targetZ;
     private long lastUpdateTime;
 
-    public RageAttackGoal(BeeperEntity mob, double speed, double rageDistance) {
+    public BeeperRageGoal(BeeperEntity mob, double speed, Range<Double> attackRange) {
         this.mob = mob;
         this.speed = speed;
-        this.rageDistance = rageDistance;
+        this.attackRange = attackRange;
         this.setControls(EnumSet.of(Control.MOVE, Control.LOOK, Control.TARGET));
     }
 
@@ -35,6 +36,10 @@ public class RageAttackGoal extends Goal {
 
     @Override
     public boolean canStart() {
+        if (mob.getAnnoyance() < 0.85f) {
+            return false;
+        }
+
         // Once a second
         long l = mob.getWorld().getTime();
         if (l - lastUpdateTime < 20L) {
@@ -48,7 +53,9 @@ public class RageAttackGoal extends Goal {
             return false;
         }
         // In range + Have eye contact
-        if (!mob.getVisibilityCache().canSee(lastTarget) || mob.squaredDistanceTo(lastTarget) > (rageDistance * rageDistance)) {
+        if (!mob.getVisibilityCache().canSee(lastTarget)
+                || mob.distanceTo(lastTarget) > attackRange.upperEndpoint()
+                || mob.distanceTo(lastTarget) < attackRange.lowerEndpoint()) {
             return false;
         }
 

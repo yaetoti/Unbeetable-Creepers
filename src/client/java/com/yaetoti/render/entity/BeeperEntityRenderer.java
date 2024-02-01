@@ -13,7 +13,9 @@ import net.fabricmc.api.Environment;
 import net.minecraft.client.render.entity.EntityRendererFactory;
 import net.minecraft.client.render.entity.MobEntityRenderer;
 import net.minecraft.client.render.entity.model.EntityModelLayers;
+import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.Identifier;
+import net.minecraft.util.math.MathHelper;
 
 @Environment(value=EnvType.CLIENT)
 public class BeeperEntityRenderer extends MobEntityRenderer<BeeperEntity, BeeperEntityModel<BeeperEntity>> {
@@ -28,6 +30,24 @@ public class BeeperEntityRenderer extends MobEntityRenderer<BeeperEntity, Beeper
     @Override
     public Identifier getTexture(BeeperEntity entity) {
         return TEXTURE;
+    }
+
+    @Override
+    protected void scale(BeeperEntity entity, MatrixStack matrices, float amount) {
+        float g = entity.getClientFuseTime(amount);
+        float h = 1.0F + MathHelper.sin(g * 100.0F) * g * 0.01F;
+        g = MathHelper.clamp(g, 0.0F, 1.0F);
+        g *= g;
+        g *= g;
+        float i = (1.0F + g * 0.4F) * h;
+        float j = (1.0F + g * 0.1F) / h;
+        matrices.scale(i, j, i);
+    }
+
+    @Override
+    protected float getAnimationCounter(BeeperEntity entity, float tickDelta) {
+        float fuseTime = entity.getClientFuseTime(tickDelta);
+        return (int)(fuseTime * 10.0F) % 2 == 0 ? 0.0F : MathHelper.clamp(fuseTime, 0.5F, 1.0F);
     }
 }
 
