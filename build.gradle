@@ -22,7 +22,7 @@ loom {
     splitEnvironmentSourceSets()
 
 	mods {
-		"my-home-is-my-castle" {
+		"unbeetable" {
 			sourceSet sourceSets.main
 			sourceSet sourceSets.client
 		}
