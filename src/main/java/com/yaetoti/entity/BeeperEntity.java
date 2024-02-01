@@ -74,7 +74,7 @@ public class BeeperEntity extends HostileEntity implements Flutterer, SkinOverla
         this.setPathfindingPenalty(PathNodeType.FENCE, -1.0f);
 
         // annoyance = getRandom().nextFloat();
-        annoyance = 0.75f;
+        annoyance = 0.0f;
         System.out.println("Annoyance: " + annoyance);
     }
 
@@ -139,11 +139,12 @@ public class BeeperEntity extends HostileEntity implements Flutterer, SkinOverla
     }
 
     private void updateMemories() {
-        lastTarget = getTarget();
-        if (lastTarget == null || !lastTarget.isAlive() || !EntityPredicates.EXCEPT_CREATIVE_OR_SPECTATOR.test(lastTarget)) {
+        LivingEntity targetEntity = getTarget();
+        if (targetEntity == null || !targetEntity.isAlive() || !EntityPredicates.EXCEPT_CREATIVE_OR_SPECTATOR.test(targetEntity)) {
             return;
         }
 
+        lastTarget = targetEntity;
         targetPos = lastTarget.getEyePos();
         mobPos = getEyePos();
         targetDistance = getEyePos().distanceTo(targetPos);

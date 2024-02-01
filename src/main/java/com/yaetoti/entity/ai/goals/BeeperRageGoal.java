@@ -23,7 +23,6 @@ public class BeeperRageGoal extends Goal {
     private Path path;
 
     private boolean lostEyeContact;
-    private LivingEntity lastTarget;
     private double targetX;
     private double targetY;
     private double targetZ;
@@ -48,7 +47,7 @@ public class BeeperRageGoal extends Goal {
             return false;
         }
 
-        lastTarget = mob.getLastTarget();
+        LivingEntity lastTarget = mob.getLastTarget();
         if (lastTarget == null || !lastTarget.isAlive() || !EntityPredicates.EXCEPT_CREATIVE_OR_SPECTATOR.test(lastTarget)) {
             return false;
         }
@@ -70,6 +69,7 @@ public class BeeperRageGoal extends Goal {
 
     @Override
     public boolean shouldContinue() {
+        LivingEntity lastTarget = mob.getLastTarget();
         if (lastTarget == null || !lastTarget.isAlive() || !EntityPredicates.EXCEPT_CREATIVE_OR_SPECTATOR.test(lastTarget)) {
             return false;
         }
@@ -91,13 +91,14 @@ public class BeeperRageGoal extends Goal {
     public void stop() {
         mobNavigation.stop();
         mobNavigation.setSpeed(0);
-        // TODO: Kludge
+        // TODO: Kludge. Replace with goal pausing
         // Enable targeting goals
         mob.setTargetingEnabled(true);
     }
 
     @Override
     public void tick() {
+        LivingEntity lastTarget = mob.getLastTarget();
         if (!lostEyeContact && !mob.getVisibilityCache().canSee(lastTarget)) {
             lostEyeContact = true;
         }
