@@ -2,6 +2,7 @@ package com.yaetoti.entity.ai.goals;
 
 import com.yaetoti.entity.BeeperEntity;
 import com.yaetoti.holders.ModSounds;
+import com.yaetoti.utils.Annoyance;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.ai.NoPenaltyTargeting;
 import net.minecraft.entity.ai.goal.Goal;
@@ -38,7 +39,9 @@ public class BeeperFleeGoal extends Goal {
             return false;
         }
 
-        if (!mob.isSpotted() || mob.getTargetDistance() > 12.0f) {
+        if (!mob.isSpotted()
+                || mob.getTargetDistance() > 12.0f
+                || (Annoyance.of(mob.getAnnoyance()) == Annoyance.SCARE && (mob.getTargetDistance() < 3.0))) {
             return false;
         }
 
@@ -87,7 +90,7 @@ public class BeeperFleeGoal extends Goal {
             }
 
             mobNavigation.startMovingAlong(fleePath, fastSpeed);
-            mob.decreaseAnnoyance(0.0015f);
+            mob.decreaseAnnoyance(0.005f);
         }
 
         if (mob.getTargetDistance() < 7) {
@@ -98,7 +101,7 @@ public class BeeperFleeGoal extends Goal {
     }
 
     private boolean updateFleePath(@NotNull LivingEntity targetEntity) {
-        Vec3d fleePoint = NoPenaltyTargeting.findFrom(mob, 16, 7, mob.getTargetPos());
+        Vec3d fleePoint = NoPenaltyTargeting.findFrom(mob, 16, 5, mob.getTargetPos());
         if (fleePoint == null) {
             mob.increaseAnnoyance(0.001f);
             return false;

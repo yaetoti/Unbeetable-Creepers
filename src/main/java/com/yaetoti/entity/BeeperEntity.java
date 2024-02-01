@@ -52,7 +52,7 @@ public class BeeperEntity extends HostileEntity implements Flutterer, SkinOverla
     private float explosionRadius = 2.0f;
 
     // Fuse
-    // TODO config
+    // TODO: Config
     private static final float FUSE_TIME = 30;
     private float lastFuseTime;
     private float currentFuseTime;
@@ -76,7 +76,7 @@ public class BeeperEntity extends HostileEntity implements Flutterer, SkinOverla
         this.setPathfindingPenalty(PathNodeType.FENCE, -1.0f);
 
         // annoyance = getRandom().nextFloat();
-        annoyance = 0.0f;
+        annoyance = 0.5f;
         System.out.println("Annoyance: " + annoyance);
     }
 
@@ -113,7 +113,7 @@ public class BeeperEntity extends HostileEntity implements Flutterer, SkinOverla
 
     @Override
     public void tick() {
-        // TODO kludge
+        // TODO: Kludge. Use brain system instead
         // Update memories
         updateMemories();
 
@@ -165,7 +165,7 @@ public class BeeperEntity extends HostileEntity implements Flutterer, SkinOverla
     }
 
     public void setTargetingEnabled(boolean enabled) {
-        // TODO kludge
+        // TODO: Kludge. Use brain's memories for detailed behaviour control
         targetSelector.setControlEnabled(Goal.Control.TARGET, enabled);
     }
 
@@ -383,7 +383,7 @@ public class BeeperEntity extends HostileEntity implements Flutterer, SkinOverla
 
     public void explode() {
         if (!this.getWorld().isClient) {
-            // TODO config
+            // TODO: Config
             float f = this.isCharged() ? 2.0f : 1.0f;
             this.dead = true;
             this.discard();
@@ -396,7 +396,7 @@ public class BeeperEntity extends HostileEntity implements Flutterer, SkinOverla
         Collection<StatusEffectInstance> collection = this.getStatusEffects();
         if (!collection.isEmpty()) {
             AreaEffectCloudEntity areaEffectCloudEntity = new AreaEffectCloudEntity(this.getWorld(), this.getX(), this.getY(), this.getZ());
-            // TODO config
+            // TODO: Config
             float f = this.isCharged() ? 1.5f : 1.0f;
             areaEffectCloudEntity.setRadius(2.5f * f);
             areaEffectCloudEntity.setRadiusOnUse(-0.2f);

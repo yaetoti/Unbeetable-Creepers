@@ -1,6 +1,7 @@
 package com.yaetoti.entity.ai.goals;
 
 import com.yaetoti.entity.BeeperEntity;
+import com.yaetoti.utils.Annoyance;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.ai.goal.Goal;
 import net.minecraft.entity.ai.pathing.EntityNavigation;
@@ -63,6 +64,19 @@ public class BeeperFuseGoal extends Goal {
             mob.setFuseSpeed(-1);
         }
 
+        Annoyance annoyance = Annoyance.of(mob.getAnnoyance());
+        if (annoyance == Annoyance.ANNOY) {
+            handleDelusion();
+        } else if (annoyance == Annoyance.SCARE) {
+            if (mob.isSpotted()) {
+                mob.setFuseSpeed(0.5f);
+            }
+        }
+
+        // this.mob.setFuseSpeed(mob.getAnnoyance() * 2);
+    }
+
+    private void handleDelusion() {
         if (delusionTimeout == 0) {
             mob.playSound(SoundEvents.ENTITY_CREEPER_PRIMED, 1.0f, 0.5f);
             delusionTimeout = (int)(100 + mob.getRandom().nextFloat() * 300);
@@ -86,7 +100,5 @@ public class BeeperFuseGoal extends Goal {
                 mob.increaseAnnoyance(0.1f);
             }
         }
-
-        // this.mob.setFuseSpeed(mob.getAnnoyance() * 2);
     }
 }
