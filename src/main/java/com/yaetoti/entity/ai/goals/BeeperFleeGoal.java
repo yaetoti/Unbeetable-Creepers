@@ -86,7 +86,8 @@ public class BeeperFleeGoal extends Goal {
                 return;
             }
 
-            this.mobNavigation.startMovingAlong(fleePath, fastSpeed);
+            mobNavigation.startMovingAlong(fleePath, fastSpeed);
+            mob.decreaseAnnoyance(0.0015f);
         }
 
         if (mob.getTargetDistance() < 7) {

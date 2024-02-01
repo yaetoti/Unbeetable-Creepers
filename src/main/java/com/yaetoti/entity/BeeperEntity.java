@@ -109,7 +109,6 @@ public class BeeperEntity extends HostileEntity implements Flutterer, SkinOverla
 
         goalSelector.add(6, new LookAroundGoal(this));
         targetSelector.add(1, new ActiveTargetGoal<>(this, PlayerEntity.class, false));
-        // TODO revenge goal
     }
 
     @Override
@@ -330,7 +329,15 @@ public class BeeperEntity extends HostileEntity implements Flutterer, SkinOverla
         if (this.annoyance > 1.0f) {
             this.annoyance = 1.0f;
         }
-        System.out.println("ANNOYING: " + this.annoyance);
+        System.out.println("+ANNOYING: " + this.annoyance);
+    }
+
+    public void decreaseAnnoyance(float annoyance) {
+        this.annoyance -= annoyance;
+        if (this.annoyance < 0.0f) {
+            this.annoyance = 0.0f;
+        }
+        System.out.println("-ANNOYING: " + this.annoyance);
     }
 
     // Behaviour
