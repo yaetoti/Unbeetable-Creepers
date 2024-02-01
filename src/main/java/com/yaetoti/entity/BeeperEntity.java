@@ -76,7 +76,7 @@ public class BeeperEntity extends HostileEntity implements Flutterer, SkinOverla
         this.setPathfindingPenalty(PathNodeType.FENCE, -1.0f);
 
         // annoyance = getRandom().nextFloat();
-        annoyance = 0.5f;
+        annoyance = 0.75f;
         System.out.println("Annoyance: " + annoyance);
     }
 

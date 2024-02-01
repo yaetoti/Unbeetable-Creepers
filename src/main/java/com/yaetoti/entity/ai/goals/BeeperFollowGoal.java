@@ -80,12 +80,12 @@ public class BeeperFollowGoal extends Goal {
         LivingEntity targetEntity = mob.getLastTarget();
         mob.getLookControl().lookAt(targetEntity, 30.0f, 30.0f);
 
-        if (mob.getTargetDistance() <= 2.5f) {
+        if (mob.getTargetDistance() <= 2.0f) {
             mobNavigation.stop();
             mobNavigation.setSpeed(0);
             return;
-        } else if (mob.getTargetDistance() <= 5) {
-            mobNavigation.setSpeed(speed * 0.2);
+        } else if (mob.getTargetDistance() <= 4.0) {
+            mobNavigation.setSpeed(speed * 0.1);
         }
 
         if (!mob.getNavigation().isFollowingPath()) {

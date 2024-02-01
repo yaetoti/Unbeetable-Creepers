@@ -39,9 +39,11 @@ public class BeeperFleeGoal extends Goal {
             return false;
         }
 
-        if (!mob.isSpotted()
+        Annoyance annoyance = Annoyance.of(mob.getAnnoyance());
+        if ((!mob.isSpotted() && mob.getFuseSpeed() <= 0)
                 || mob.getTargetDistance() > 12.0f
-                || (Annoyance.of(mob.getAnnoyance()) == Annoyance.SCARE && (mob.getTargetDistance() < 3.0))) {
+                || ((annoyance == Annoyance.SCARE) && (mob.getTargetDistance() < 2.0))
+                || ((annoyance == Annoyance.KILL) && (mob.getTargetDistance() < 4.0))) {
             return false;
         }
 

@@ -69,7 +69,15 @@ public class BeeperFuseGoal extends Goal {
             handleDelusion();
         } else if (annoyance == Annoyance.SCARE) {
             if (mob.isSpotted()) {
-                mob.setFuseSpeed(0.5f);
+                mob.setFuseSpeed(1.0f);
+            }
+        } else if (annoyance == Annoyance.KILL) {
+            if (delusionTimeout == 0) {
+                mob.setFuseSpeed(0.85f);
+            }
+
+            if (delusionTimeout > 0) {
+                --delusionTimeout;
             }
         }
 
