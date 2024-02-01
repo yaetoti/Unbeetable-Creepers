@@ -3,11 +3,9 @@
  */
 package com.yaetoti.entity;
 
+import com.google.common.collect.Range;
 import com.yaetoti.entity.ai.control.BeeperFlightMoveControl;
-import com.yaetoti.entity.ai.goals.BeeperFleeGoal;
-import com.yaetoti.entity.ai.goals.BeeperFollowGoal;
-import com.yaetoti.entity.ai.goals.BeeperFuseGoal;
-import com.yaetoti.entity.ai.goals.BeeperWanderGoal;
+import com.yaetoti.entity.ai.goals.*;
 import com.yaetoti.holders.ModEntities;
 import net.minecraft.block.BlockState;
 import net.minecraft.client.render.entity.feature.SkinOverlayOwner;
@@ -101,7 +99,7 @@ public class BeeperEntity extends HostileEntity implements Flutterer, SkinOverla
 
         goalSelector.add(0, new SwimGoal(this));
 
-        // goalSelector.add(1, new BeeperRageGoal(this, 12.0, Range.open(10.0, 16.0)));
+        goalSelector.add(1, new BeeperRageGoal(this, 12.0, Range.open(10.0, 16.0)));
         goalSelector.add(2, new BeeperFleeGoal(this, 8.0f, 12.0));
         goalSelector.add(3, new BeeperFuseGoal(this));
         goalSelector.add(4, new BeeperFollowGoal(this, 6.0));

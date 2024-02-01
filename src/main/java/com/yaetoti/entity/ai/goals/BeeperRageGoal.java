@@ -3,10 +3,14 @@ package com.yaetoti.entity.ai.goals;
 import com.google.common.collect.Range;
 import com.yaetoti.entity.BeeperEntity;
 import com.yaetoti.holders.ModSounds;
+import com.yaetoti.utils.Annoyance;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.ai.goal.Goal;
+import net.minecraft.entity.ai.pathing.EntityNavigation;
 import net.minecraft.entity.ai.pathing.Path;
 import net.minecraft.predicate.entity.EntityPredicates;
+import net.minecraft.util.math.Vec3d;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.EnumSet;
 
@@ -14,19 +18,22 @@ public class BeeperRageGoal extends Goal {
     protected final BeeperEntity mob;
     private final double speed;
     private final Range<Double> attackRange;
+    private final EntityNavigation mobNavigation;
+    @Nullable
     private Path path;
+
     private boolean lostEyeContact;
-    LivingEntity lastTarget;
+    private LivingEntity lastTarget;
     private double targetX;
     private double targetY;
     private double targetZ;
-    private long lastUpdateTime;
 
     public BeeperRageGoal(BeeperEntity mob, double speed, Range<Double> attackRange) {
         this.mob = mob;
         this.speed = speed;
         this.attackRange = attackRange;
-        this.setControls(EnumSet.of(Control.MOVE, Control.LOOK, Control.TARGET));
+        mobNavigation = mob.getNavigation();
+        setControls(EnumSet.of(Control.MOVE, Control.LOOK, Control.TARGET));
     }
 
     @Override
@@ -36,48 +43,34 @@ public class BeeperRageGoal extends Goal {
 
     @Override
     public boolean canStart() {
-        if (mob.getAnnoyance() < 0.85f) {
+        Annoyance annoyance = Annoyance.of(mob.getAnnoyance());
+        if (annoyance != Annoyance.REVENGE) {
             return false;
         }
 
-        // Once a second
-        long l = mob.getWorld().getTime();
-        if (l - lastUpdateTime < 20L) {
+        lastTarget = mob.getLastTarget();
+        if (lastTarget == null || !lastTarget.isAlive() || !EntityPredicates.EXCEPT_CREATIVE_OR_SPECTATOR.test(lastTarget)) {
             return false;
         }
-        lastUpdateTime = l;
 
-        // Has target
-        lastTarget = this.mob.getTarget();
-        if (lastTarget == null || !lastTarget.isAlive()) {
-            return false;
-        }
-        // In range + Have eye contact
         if (!mob.getVisibilityCache().canSee(lastTarget)
                 || mob.distanceTo(lastTarget) > attackRange.upperEndpoint()
                 || mob.distanceTo(lastTarget) < attackRange.lowerEndpoint()) {
             return false;
         }
 
-        // Remember position
-        var eyePos = lastTarget.getEyePos();
-        targetX = eyePos.getX();
-        targetY = eyePos.getY();
-        targetZ = eyePos.getZ();
-        // There is a path to the target
-        path = mob.getNavigation().findPathTo(targetX, targetY, targetZ, 0);
-        if (path != null && path.reachesTarget()) {
-            return true;
+        Vec3d targetPos = mob.getTargetPos();
+        path = mobNavigation.findPathTo(targetPos.getX(), targetPos.getY(), targetPos.getZ(), 0);
+        if (path == null) {
+            return false;
         }
 
-        return false;
+        return path.reachesTarget();
     }
 
     @Override
     public boolean shouldContinue() {
-        // Entity disappeared / went to creative
         if (lastTarget == null || !lastTarget.isAlive() || !EntityPredicates.EXCEPT_CREATIVE_OR_SPECTATOR.test(lastTarget)) {
-            mob.setTarget(null);
             return false;
         }
 
@@ -86,48 +79,39 @@ public class BeeperRageGoal extends Goal {
 
     @Override
     public void start() {
-        mob.getNavigation().startMovingAlong(this.path, this.speed);
-        mob.setAttacking(true);
         lostEyeContact = false;
-        // Disable targeting goals
+        mob.getNavigation().startMovingAlong(path, speed);
+        // TODO: Kludge
+        // Disable targeting
         mob.setTargetingEnabled(false);
         mob.getWorld().playSoundFromEntity(null, mob, ModSounds.AAA, mob.getSoundCategory(), 1.0f, 1.0f);
     }
 
     @Override
     public void stop() {
-        LivingEntity livingEntity = mob.getTarget();
-        if (!EntityPredicates.EXCEPT_CREATIVE_OR_SPECTATOR.test(livingEntity)) {
-            mob.setTarget(null);
-        }
-        mob.setAttacking(false);
-        mob.getNavigation().stop();
+        mobNavigation.stop();
+        mobNavigation.setSpeed(0);
+        // TODO: Kludge
         // Enable targeting goals
         mob.setTargetingEnabled(true);
     }
 
     @Override
     public void tick() {
-        // Follow entity. If eye contact was lost - target last entity position
-        LivingEntity targetEntity = this.mob.getTarget();
-        if (!lostEyeContact && (targetEntity == null || !targetEntity.isAlive() || !mob.getVisibilityCache().canSee(targetEntity))) {
+        if (!lostEyeContact && !mob.getVisibilityCache().canSee(lastTarget)) {
             lostEyeContact = true;
         }
 
         if (!lostEyeContact) {
-            var eyePos = targetEntity.getEyePos();
+            Vec3d eyePos = lastTarget.getEyePos();
             targetX = eyePos.getX();
             targetY = eyePos.getY();
             targetZ = eyePos.getZ();
         }
 
-        // Update pathfinding
-        //if (!mob.getNavigation().isFollowingPath()) {
         mob.getNavigation().startMovingTo(targetX, targetY, targetZ, speed);
-        //}
-
         mob.getLookControl().lookAt(targetX, targetY, targetZ, 30.0f, 30.0f);
-        if (mob.squaredDistanceTo(targetX, targetY, targetZ) <= 3.5) {
+        if (mob.squaredDistanceTo(targetX, targetY, targetZ) <= 3.0) {
             mob.explode();
         }
     }

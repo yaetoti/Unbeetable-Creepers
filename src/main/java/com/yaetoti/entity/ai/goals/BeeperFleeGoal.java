@@ -29,7 +29,7 @@ public class BeeperFleeGoal extends Goal {
         this.slowSpeed = slowSpeed;
         this.fastSpeed = fastSpeed;
         this.mobNavigation = mob.getNavigation();
-        this.setControls(EnumSet.of(Goal.Control.MOVE));
+        setControls(EnumSet.of(Goal.Control.MOVE));
     }
 
     @Override
@@ -40,7 +40,7 @@ public class BeeperFleeGoal extends Goal {
         }
 
         Annoyance annoyance = Annoyance.of(mob.getAnnoyance());
-        if ((!mob.isSpotted() && mob.getFuseSpeed() <= 0)
+        if ((!mob.isSpotted() && mob.getFuseSpeed() <= 0 && annoyance != Annoyance.REVENGE)
                 || mob.getTargetDistance() > 12.0f
                 || ((annoyance == Annoyance.SCARE) && (mob.getTargetDistance() < 2.0))
                 || ((annoyance == Annoyance.KILL) && (mob.getTargetDistance() < 4.0))) {
