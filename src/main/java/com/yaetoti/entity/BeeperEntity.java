@@ -6,6 +6,7 @@ package com.yaetoti.entity;
 import com.yaetoti.entity.ai.control.BeeperFlightMoveControl;
 import com.yaetoti.entity.ai.goals.BeeperFleeGoal;
 import com.yaetoti.entity.ai.goals.BeeperFollowGoal;
+import com.yaetoti.entity.ai.goals.BeeperFuseGoal;
 import com.yaetoti.entity.ai.goals.BeeperWanderGoal;
 import com.yaetoti.holders.ModEntities;
 import net.minecraft.block.BlockState;
@@ -30,6 +31,7 @@ import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.fluid.Fluid;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtElement;
+import net.minecraft.predicate.entity.EntityPredicates;
 import net.minecraft.registry.tag.TagKey;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundEvent;
@@ -56,6 +58,7 @@ public class BeeperEntity extends HostileEntity implements Flutterer, SkinOverla
     private float currentFuseTime;
 
     // Memories (Variables commonly used by goals)
+    LivingEntity lastTarget;
     private Vec3d targetPos;
     private Vec3d mobPos;
     private double targetDistance;
@@ -99,9 +102,9 @@ public class BeeperEntity extends HostileEntity implements Flutterer, SkinOverla
         goalSelector.add(0, new SwimGoal(this));
 
         // goalSelector.add(1, new BeeperRageGoal(this, 12.0, Range.open(10.0, 16.0)));
-        goalSelector.add(2, new BeeperFleeGoal(this, 16.0f, 8.0, 12.0));
-        // goalSelector.add(3, new BeeperFuseGoal(this));
-        goalSelector.add(4, new BeeperFollowGoal(this, 6.0, true));
+        goalSelector.add(2, new BeeperFleeGoal(this, 8.0f, 12.0));
+        goalSelector.add(3, new BeeperFuseGoal(this));
+        goalSelector.add(4, new BeeperFollowGoal(this, 6.0));
         goalSelector.add(5, new BeeperWanderGoal(this, 3.0));
 
         goalSelector.add(6, new LookAroundGoal(this));
@@ -139,16 +142,16 @@ public class BeeperEntity extends HostileEntity implements Flutterer, SkinOverla
     }
 
     private void updateMemories() {
-        LivingEntity targetEntity = getTarget();
-        if (targetEntity == null || !targetEntity.isAlive()) {
+        lastTarget = getTarget();
+        if (lastTarget == null || !lastTarget.isAlive() || !EntityPredicates.EXCEPT_CREATIVE_OR_SPECTATOR.test(lastTarget)) {
             return;
         }
 
-        targetPos = targetEntity.getEyePos();
+        targetPos = lastTarget.getEyePos();
         mobPos = getEyePos();
         targetDistance = getEyePos().distanceTo(targetPos);
 
-        Vec3d lookVector = targetEntity.getRotationVector().normalize();
+        Vec3d lookVector = lastTarget.getRotationVector().normalize();
         Vec3d mobVector = mobPos.subtract(targetPos).normalize();
         double angleCos = lookVector.dotProduct(mobVector);
         spotted = angleCos >= 0.5;
@@ -294,6 +297,10 @@ public class BeeperEntity extends HostileEntity implements Flutterer, SkinOverla
     }
 
     // Memories
+    public LivingEntity getLastTarget() {
+        return lastTarget;
+    }
+
     public Vec3d getTargetPos() {
         return targetPos;
     }
@@ -319,11 +326,11 @@ public class BeeperEntity extends HostileEntity implements Flutterer, SkinOverla
     }
 
     public void increaseAnnoyance(float annoyance) {
-        System.out.println("ANNOYING: " + this.annoyance);
         this.annoyance += annoyance;
         if (this.annoyance > 1.0f) {
             this.annoyance = 1.0f;
         }
+        System.out.println("ANNOYING: " + this.annoyance);
     }
 
     // Behaviour

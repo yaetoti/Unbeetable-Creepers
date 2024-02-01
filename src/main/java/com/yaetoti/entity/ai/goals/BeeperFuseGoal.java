@@ -3,17 +3,22 @@ package com.yaetoti.entity.ai.goals;
 import com.yaetoti.entity.BeeperEntity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.ai.goal.Goal;
-import org.jetbrains.annotations.Nullable;
+import net.minecraft.entity.ai.pathing.EntityNavigation;
+import net.minecraft.predicate.entity.EntityPredicates;
+import net.minecraft.sound.SoundEvents;
 
 import java.util.EnumSet;
 
 public class BeeperFuseGoal extends Goal {
     private final BeeperEntity mob;
-    @Nullable
-    private LivingEntity target;
+    private final EntityNavigation mobNavigation;
+    private int delusionTimeout;
+    private int annoyanceTimeout;
+    private boolean deludedRecently;
 
     public BeeperFuseGoal(BeeperEntity creeper) {
         this.mob = creeper;
+        this.mobNavigation = mob.getNavigation();
         this.setControls(EnumSet.of(Goal.Control.MOVE));
     }
 
@@ -24,12 +29,12 @@ public class BeeperFuseGoal extends Goal {
 
     @Override
     public boolean canStart() {
-        if (mob.getAnnoyance() <= 0.95f) {
+        LivingEntity targetEntity = mob.getLastTarget();
+        if (targetEntity == null || !targetEntity.isAlive() || !EntityPredicates.EXCEPT_CREATIVE_OR_SPECTATOR.test(targetEntity)) {
             return false;
         }
 
-        LivingEntity livingEntity = this.mob.getTarget();
-        return mob.getFuseSpeed() > 0 || livingEntity != null && mob.squaredDistanceTo(livingEntity) < 9.0;
+        return mob.getFuseSpeed() > 0 || mob.getTargetDistance() < 3.0f;
     }
 
     @Override
@@ -39,29 +44,49 @@ public class BeeperFuseGoal extends Goal {
 
     @Override
     public void start() {
-        this.mob.getNavigation().stop();
-        this.target = this.mob.getTarget();
+        delusionTimeout = (int)(100 + mob.getRandom().nextFloat() * 100);
+        annoyanceTimeout = 0;
+        deludedRecently = false;
+        mobNavigation.stop();
+        mobNavigation.setSpeed(0);
     }
 
     @Override
     public void stop() {
-        this.target = null;
+        mob.setFuseSpeed(-1);
     }
 
     @Override
     public void tick() {
-        if (this.target == null) {
-            this.mob.setFuseSpeed(-1);
-            return;
+        LivingEntity targetEntity = mob.getLastTarget();
+        if (!mob.getVisibilityCache().canSee(targetEntity)) {
+            mob.setFuseSpeed(-1);
         }
-        if (this.mob.squaredDistanceTo(this.target) > 49.0) {
-            this.mob.setFuseSpeed(-1);
-            return;
+
+        if (delusionTimeout == 0) {
+            mob.playSound(SoundEvents.ENTITY_CREEPER_PRIMED, 1.0f, 0.5f);
+            delusionTimeout = (int)(100 + mob.getRandom().nextFloat() * 300);
+            annoyanceTimeout = 60;
+            deludedRecently = true;
         }
-        if (!this.mob.getVisibilityCache().canSee(this.target)) {
-            this.mob.setFuseSpeed(-1);
-            return;
+
+        if (delusionTimeout > 0) {
+            --delusionTimeout;
         }
-        this.mob.setFuseSpeed(mob.getAnnoyance() * 2);
+
+        // Played fuse sound without actually fusing
+        if (deludedRecently) {
+            if (annoyanceTimeout > 0) {
+                --annoyanceTimeout;
+            }
+
+            // Player didn't react. Otherwise, FleeGoal would be called
+            if (annoyanceTimeout == 0) {
+                deludedRecently = false;
+                mob.increaseAnnoyance(0.1f);
+            }
+        }
+
+        // this.mob.setFuseSpeed(mob.getAnnoyance() * 2);
     }
 }

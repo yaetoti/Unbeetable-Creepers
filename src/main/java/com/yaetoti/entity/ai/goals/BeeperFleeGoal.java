@@ -1,11 +1,13 @@
 package com.yaetoti.entity.ai.goals;
 
 import com.yaetoti.entity.BeeperEntity;
+import com.yaetoti.holders.ModSounds;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.ai.NoPenaltyTargeting;
 import net.minecraft.entity.ai.goal.Goal;
 import net.minecraft.entity.ai.pathing.EntityNavigation;
 import net.minecraft.entity.ai.pathing.Path;
+import net.minecraft.predicate.entity.EntityPredicates;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -16,14 +18,13 @@ public class BeeperFleeGoal extends Goal {
     private final BeeperEntity mob;
     private final double slowSpeed;
     private final double fastSpeed;
-    private final float fleeDistance;
     private final EntityNavigation mobNavigation;
+    private int safeTicks;
     @Nullable
     protected Path fleePath;
 
-    public BeeperFleeGoal(BeeperEntity mob, float distance, double slowSpeed, double fastSpeed) {
+    public BeeperFleeGoal(BeeperEntity mob, double slowSpeed, double fastSpeed) {
         this.mob = mob;
-        this.fleeDistance = distance;
         this.slowSpeed = slowSpeed;
         this.fastSpeed = fastSpeed;
         this.mobNavigation = mob.getNavigation();
@@ -32,12 +33,12 @@ public class BeeperFleeGoal extends Goal {
 
     @Override
     public boolean canStart() {
-        LivingEntity targetEntity = mob.getTarget();
-        if (targetEntity == null || !targetEntity.isAlive()) {
+        LivingEntity targetEntity = mob.getLastTarget();
+        if (targetEntity == null || !targetEntity.isAlive() || !EntityPredicates.EXCEPT_CREATIVE_OR_SPECTATOR.test(targetEntity)) {
             return false;
         }
 
-        if (!mob.isSpotted() || mob.getTargetDistance() > 16.0f) {
+        if (!mob.isSpotted() || mob.getTargetDistance() > 12.0f) {
             return false;
         }
 
@@ -46,21 +47,31 @@ public class BeeperFleeGoal extends Goal {
 
     @Override
     public boolean shouldContinue() {
-        LivingEntity targetEntity = mob.getTarget();
-        if (targetEntity == null || !targetEntity.isAlive()) {
+        LivingEntity targetEntity = mob.getLastTarget();
+        if (targetEntity == null || !targetEntity.isAlive() || !EntityPredicates.EXCEPT_CREATIVE_OR_SPECTATOR.test(targetEntity)) {
             return false;
         }
 
         if (!mob.isSpotted() || mob.getTargetDistance() > 16.0f) {
+            ++safeTicks;
+        } else {
+            safeTicks = 0;
+        }
+
+        if (safeTicks >= 20) {
             return false;
         }
 
-        return true;
+        return EntityPredicates.EXCEPT_CREATIVE_OR_SPECTATOR.test(targetEntity);
     }
 
     @Override
     public void start() {
+        safeTicks = 0;
         mobNavigation.startMovingAlong(fleePath, fastSpeed);
+        if (mob.getTargetDistance() <= 4.0f) {
+            mob.playSound(ModSounds.WOO, 8.0f, 1.0f);
+        }
     }
 
     @Override
@@ -71,7 +82,7 @@ public class BeeperFleeGoal extends Goal {
     @Override
     public void tick() {
         if (!mob.getNavigation().isFollowingPath()) {
-            if (updateFleePath(mob.getTarget())) {
+            if (updateFleePath(mob.getLastTarget())) {
                 return;
             }
 
