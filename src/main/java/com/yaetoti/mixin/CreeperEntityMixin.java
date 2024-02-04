@@ -7,6 +7,7 @@ import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.ai.goal.*;
 import net.minecraft.entity.ai.pathing.EntityNavigation;
 import net.minecraft.entity.ai.pathing.Path;
+import net.minecraft.entity.attribute.EntityAttributes;
 import net.minecraft.entity.data.TrackedData;
 import net.minecraft.entity.mob.CreeperEntity;
 import net.minecraft.entity.mob.HostileEntity;
@@ -229,6 +230,7 @@ public abstract class CreeperEntityMixin extends HostileEntity implements SkinOv
 
                 // Spawn beeper
                 BeeperEntity beeper = new BeeperEntity(world);
+                beeper.setHealth((float)((mob.getHealth() / mob.getAttributeValue(EntityAttributes.GENERIC_MAX_HEALTH)) * beeper.getAttributeValue(EntityAttributes.GENERIC_MAX_HEALTH)));
                 beeper.refreshPositionAndAngles(mobPos.getX(), mobPos.getY(), mobPos.getZ(), mob.getYaw(), mob.getPitch());
                 beeper.setTarget(lastTarget);
                 beeper.setCharged(((CreeperEntityMixin)(Object)mob).isCharged());

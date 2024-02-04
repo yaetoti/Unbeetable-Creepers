@@ -10,7 +10,6 @@ import com.yaetoti.holders.ModEntities;
 import net.minecraft.block.BlockState;
 import net.minecraft.client.render.entity.feature.SkinOverlayOwner;
 import net.minecraft.entity.*;
-import net.minecraft.entity.ai.goal.ActiveTargetGoal;
 import net.minecraft.entity.ai.goal.Goal;
 import net.minecraft.entity.ai.goal.LookAroundGoal;
 import net.minecraft.entity.ai.goal.SwimGoal;
@@ -98,15 +97,14 @@ public class BeeperEntity extends HostileEntity implements Flutterer, SkinOverla
         super.initGoals();
 
         goalSelector.add(0, new SwimGoal(this));
-
         goalSelector.add(1, new BeeperRageGoal(this, 12.0, Range.open(10.0, 16.0)));
         goalSelector.add(2, new BeeperFleeGoal(this, 8.0f, 12.0));
         goalSelector.add(3, new BeeperFuseGoal(this));
         goalSelector.add(4, new BeeperFollowGoal(this, 6.0));
         goalSelector.add(5, new BeeperWanderGoal(this, 3.0));
-
         goalSelector.add(6, new LookAroundGoal(this));
-        targetSelector.add(1, new ActiveTargetGoal<>(this, PlayerEntity.class, false));
+        targetSelector.add(1, new BeeperTargetGoal<>(this, PlayerEntity.class, false));
+        // targetSelector.add(1, new ActiveTargetGoal<>(this, PlayerEntity.class, false));
     }
 
     @Override
@@ -258,7 +256,8 @@ public class BeeperEntity extends HostileEntity implements Flutterer, SkinOverla
         if (dataTracker.get(CHARGED)) {
             nbt.putBoolean("powered", true);
         }
-        nbt.putByte("ExplosionRadius", (byte)this.explosionRadius);
+        nbt.putByte("ExplosionRadius", (byte)explosionRadius);
+        nbt.putFloat("Annoyance", annoyance);
     }
 
     @Override
@@ -266,7 +265,10 @@ public class BeeperEntity extends HostileEntity implements Flutterer, SkinOverla
         super.readCustomDataFromNbt(nbt);
         this.dataTracker.set(CHARGED, nbt.getBoolean("powered"));
         if (nbt.contains("ExplosionRadius", NbtElement.NUMBER_TYPE)) {
-            this.explosionRadius = nbt.getByte("ExplosionRadius");
+            explosionRadius = nbt.getByte("ExplosionRadius");
+        }
+        if (nbt.contains("Annoyance", NbtElement.FLOAT_TYPE)) {
+            annoyance = nbt.getFloat("Annoyance");
         }
     }
 

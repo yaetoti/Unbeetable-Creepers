@@ -86,6 +86,8 @@ public class BeeperFollowGoal extends Goal {
             return;
         } else if (mob.getTargetDistance() <= 4.0) {
             mobNavigation.setSpeed(speed * 0.1);
+        } else {
+            mob.increaseAnnoyance(0.001f);
         }
 
         if (!mob.getNavigation().isFollowingPath()) {
