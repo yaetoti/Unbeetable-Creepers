@@ -70,10 +70,11 @@ public abstract class CreeperEntityMixin extends HostileEntity implements SkinOv
                 annoyance = random.nextFloat() * Annoyance.SCARE.getRange().upperEndpoint().floatValue();
             }
         } else {
-            shouldSpawn = true;
             if (getAttacker() != null) {
+                shouldSpawn = random.nextFloat() < 0.15f;
                 annoyance = Annoyance.REVENGE.getRange().upperEndpoint().floatValue();
             } else {
+                shouldSpawn = true;
                 annoyance = random.nextFloat() * Annoyance.KILL.getRange().upperEndpoint().floatValue();
             }
         }
@@ -284,7 +285,7 @@ public abstract class CreeperEntityMixin extends HostileEntity implements SkinOv
             double dY = targetPos.getY() - mobPos.getY();
             handleSpottedTimeout(targetPos, mobPos, targetEntity);
 
-            if (dY >= 4.0f) {
+            if (dY > 4.0f) {
                 morphTriggered = true;
                 lastTarget = targetEntity;
                 annoyance = Annoyance.REVENGE.getRange().upperEndpoint().floatValue();
