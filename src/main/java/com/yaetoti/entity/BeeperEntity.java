@@ -23,11 +23,13 @@ import net.minecraft.entity.data.DataTracker;
 import net.minecraft.entity.data.TrackedData;
 import net.minecraft.entity.data.TrackedDataHandlerRegistry;
 import net.minecraft.entity.effect.StatusEffectInstance;
+import net.minecraft.entity.mob.CreeperEntity;
 import net.minecraft.entity.mob.HostileEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.fluid.Fluid;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtElement;
+import net.minecraft.particle.ParticleTypes;
 import net.minecraft.predicate.entity.EntityPredicates;
 import net.minecraft.registry.tag.TagKey;
 import net.minecraft.server.world.ServerWorld;
@@ -74,7 +76,7 @@ public class BeeperEntity extends HostileEntity implements Flutterer, SkinOverla
 
         // annoyance = getRandom().nextFloat();
         annoyance = 0.0f;
-        System.out.println("Annoyance: " + annoyance);
+        // System.out.println("Annoyance: " + annoyance);
     }
 
     public BeeperEntity(World world) {
@@ -330,7 +332,7 @@ public class BeeperEntity extends HostileEntity implements Flutterer, SkinOverla
         if (this.annoyance > 1.0f) {
             this.annoyance = 1.0f;
         }
-        System.out.println("+ANNOYING: " + this.annoyance);
+        //System.out.println("+ANNOYING: " + this.annoyance);
     }
 
     public void decreaseAnnoyance(float annoyance) {
@@ -338,7 +340,7 @@ public class BeeperEntity extends HostileEntity implements Flutterer, SkinOverla
         if (this.annoyance < 0.0f) {
             this.annoyance = 0.0f;
         }
-        System.out.println("-ANNOYING: " + this.annoyance);
+        //System.out.println("-ANNOYING: " + this.annoyance);
     }
 
     // Behaviour
@@ -409,6 +411,35 @@ public class BeeperEntity extends HostileEntity implements Flutterer, SkinOverla
             }
             this.getWorld().spawnEntity(areaEffectCloudEntity);
         }
+    }
+
+    // Static utils
+    public static BeeperEntity createFromCreeper(CreeperEntity mob) {
+        Vec3d mobPos = mob.getEyePos();
+        World world = mob.getWorld();
+        BeeperEntity beeper = new BeeperEntity(world);
+
+        beeper.setHealth((float)((mob.getHealth() / mob.getAttributeValue(EntityAttributes.GENERIC_MAX_HEALTH)) * beeper.getAttributeValue(EntityAttributes.GENERIC_MAX_HEALTH)));
+        beeper.refreshPositionAndAngles(mobPos.getX(), mobPos.getY(), mobPos.getZ(), mob.getYaw(), mob.getPitch());
+        for (var effect : mob.getStatusEffects()) {
+            beeper.addStatusEffect(effect);
+        }
+
+        return beeper;
+    }
+
+    public static void spawnInWorld(BeeperEntity beeper) {
+        Vec3d mobPos = beeper.getEyePos();
+        ServerWorld world = (ServerWorld)beeper.getWorld();
+
+        world.spawnEntity(beeper);
+        world.playSoundFromEntity(null, beeper, SoundEvents.ENTITY_BEE_LOOP_AGGRESSIVE, beeper.getSoundCategory(), 1.0f, 1.0f);
+        world.spawnParticles(
+                ParticleTypes.CAMPFIRE_COSY_SMOKE,
+                mobPos.getX(), mobPos.getY(), mobPos.getZ(),
+                32,
+                0.2, 0.2, 0.2,
+                0.05);
     }
 }
 

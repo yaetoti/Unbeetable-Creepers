@@ -1,23 +1,21 @@
 package com.yaetoti.mixin;
 
 import com.yaetoti.entity.BeeperEntity;
+import com.yaetoti.utils.Annoyance;
 import net.minecraft.client.render.entity.feature.SkinOverlayOwner;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.ai.goal.*;
 import net.minecraft.entity.ai.pathing.EntityNavigation;
 import net.minecraft.entity.ai.pathing.Path;
-import net.minecraft.entity.attribute.EntityAttributes;
+import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.entity.data.TrackedData;
 import net.minecraft.entity.mob.CreeperEntity;
 import net.minecraft.entity.mob.HostileEntity;
 import net.minecraft.entity.passive.CatEntity;
 import net.minecraft.entity.passive.OcelotEntity;
 import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.particle.ParticleTypes;
 import net.minecraft.predicate.entity.EntityPredicates;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.sound.SoundEvents;
 import net.minecraft.util.Hand;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
@@ -46,7 +44,7 @@ public abstract class CreeperEntityMixin extends HostileEntity implements SkinOv
             method = "initGoals()V",
             cancellable = true
     )
-    private void initGoals(CallbackInfo info) {
+    private void injectInitGoals(CallbackInfo info) {
         // TODO: Soft injection
         goalSelector.add(1, new SwimGoal(Self()));
         goalSelector.add(2, new CreeperIgniteGoal(Self()));
@@ -59,6 +57,47 @@ public abstract class CreeperEntityMixin extends HostileEntity implements SkinOv
         targetSelector.add(1, new ActiveTargetGoal<>(Self(), PlayerEntity.class, true));
         targetSelector.add(2, new RevengeGoal(Self()));
         info.cancel();
+    }
+
+    @Override
+    protected void applyDamage(DamageSource source, float amount) {
+        boolean shouldSpawn = false;
+        float annoyance = 0.0f;
+
+        if (amount < getHealth()) {
+            if (getAttacker() != null && random.nextFloat() < 0.05f) {
+                shouldSpawn = true;
+                annoyance = random.nextFloat() * Annoyance.SCARE.getRange().upperEndpoint().floatValue();
+            }
+        } else {
+            shouldSpawn = true;
+            if (getAttacker() != null) {
+                annoyance = Annoyance.REVENGE.getRange().upperEndpoint().floatValue();
+            } else {
+                annoyance = random.nextFloat() * Annoyance.KILL.getRange().upperEndpoint().floatValue();
+            }
+        }
+
+        if (shouldSpawn) {
+            BeeperEntity beeper = BeeperEntity.createFromCreeper(Self());
+            beeper.setHealth(1);
+            beeper.setCharged(isCharged());
+            beeper.setTarget(getAttacker());
+            beeper.setAnnoyance(getAttacker() instanceof PlayerEntity
+                    ? annoyance
+                    : Annoyance.REVENGE.getRange().upperEndpoint().floatValue());
+            // Cancel creeper
+            discard();
+            // Spawn
+            BeeperEntity.spawnInWorld(beeper);
+        } else {
+            super.applyDamage(source, amount);
+        }
+    }
+
+    @Override
+    public boolean damage(DamageSource source, float amount) {
+        return super.damage(source, amount);
     }
 
     public boolean isCharged() {
@@ -86,6 +125,10 @@ public abstract class CreeperEntityMixin extends HostileEntity implements SkinOv
         private int morphCountdown; // "You, son of a beech..." timer
         private boolean morphTriggered;
         private LivingEntity lastTarget;
+        private float annoyance;
+
+        private int spottedTimeout;
+        private boolean spotted;
 
         private int cooldown;
         private long lastUpdateTime;
@@ -152,6 +195,10 @@ public abstract class CreeperEntityMixin extends HostileEntity implements SkinOv
             lastTarget = null;
             morphCountdown = 0;
             morphTriggered = false;
+
+            annoyance = 0.0f;
+            spottedTimeout = 0;
+            spotted = true;
         }
 
         @Override
@@ -177,15 +224,12 @@ public abstract class CreeperEntityMixin extends HostileEntity implements SkinOv
                 return;
             }
 
+            // Morph handling
             Vec3d targetPos = targetEntity.getEyePos();
             Vec3d mobPos = mob.getEyePos();
             double dist = targetPos.squaredDistanceTo(mobPos);
 
-            // TODO fix as shouldrun runs before tick. Modify targetselector
-            if (!morphTriggered && (targetPos.getY() - mobPos.getY() >= 4.0f || dist >= 144)) {
-                morphTriggered = true;
-                lastTarget = targetEntity;
-            }
+            handleMorphSensors(targetPos, mobPos, targetEntity, dist);
 
             // Vanilla code
             mob.getLookControl().lookAt(targetEntity, 30.0f, 30.0f);
@@ -222,36 +266,55 @@ public abstract class CreeperEntityMixin extends HostileEntity implements SkinOv
             }
 
             if (morphCountdown >= 60) {
-                Vec3d mobPos = mob.getEyePos();
-                ServerWorld world = (ServerWorld)mob.getWorld();
-
-                // Cancel creeper
-                mob.discard();
-
                 // Spawn beeper
-                BeeperEntity beeper = new BeeperEntity(world);
-                beeper.setHealth((float)((mob.getHealth() / mob.getAttributeValue(EntityAttributes.GENERIC_MAX_HEALTH)) * beeper.getAttributeValue(EntityAttributes.GENERIC_MAX_HEALTH)));
-                beeper.refreshPositionAndAngles(mobPos.getX(), mobPos.getY(), mobPos.getZ(), mob.getYaw(), mob.getPitch());
+                BeeperEntity beeper = BeeperEntity.createFromCreeper(mob);
                 beeper.setTarget(lastTarget);
                 beeper.setCharged(((CreeperEntityMixin)(Object)mob).isCharged());
-                for (var effect : mob.getStatusEffects()) {
-                    beeper.addStatusEffect(effect);
-                }
-                world.spawnEntity(beeper);
-                world.playSoundFromEntity(null, beeper, SoundEvents.ENTITY_BEE_LOOP_AGGRESSIVE, beeper.getSoundCategory(), 1.0f, 1.0f);
-
-                // Spawn effects
-                world.spawnParticles(
-                        ParticleTypes.CAMPFIRE_COSY_SMOKE,
-                        mobPos.getX(), mobPos.getY(), mobPos.getZ(),
-                        32,
-                        0.2, 0.2, 0.2,
-                        0.05);
+                beeper.setAnnoyance(annoyance);
+                // Cancel creeper
+                mob.discard();
+                // Spawn
+                BeeperEntity.spawnInWorld(beeper);
             }
 
             ++morphCountdown;
         }
 
+        private void handleMorphSensors(Vec3d targetPos, Vec3d mobPos, LivingEntity targetEntity, double dist) {
+            double dY = targetPos.getY() - mobPos.getY();
+            handleSpottedTimeout(targetPos, mobPos, targetEntity);
+
+            if (dY >= 4.0f) {
+                morphTriggered = true;
+                lastTarget = targetEntity;
+                annoyance = Annoyance.REVENGE.getRange().upperEndpoint().floatValue();
+                return;
+            }
+
+            if (!spotted && dist <= 144) {
+                morphTriggered = true;
+                lastTarget = targetEntity;
+                annoyance = mob.getRandom().nextFloat() * Annoyance.KILL.getRange().upperEndpoint().floatValue();
+            }
+        }
+
+        private void handleSpottedTimeout(Vec3d targetPos, Vec3d mobPos, LivingEntity targetEntity) {
+            if (spotted) {
+                Vec3d lookVector = targetEntity.getRotationVector().normalize();
+                Vec3d mobVector = mobPos.subtract(targetPos).normalize();
+                double angleCos = lookVector.dotProduct(mobVector);
+                if (angleCos < 0.17364817766f) {
+                    ++spottedTimeout;
+                } else {
+                    spottedTimeout = 0;
+                }
+
+                if (spottedTimeout >= 40) {
+                    spotted = false;
+                    spottedTimeout = 0;
+                }
+            }
+        }
 
         // Attack methods
         protected void attack(LivingEntity target) {

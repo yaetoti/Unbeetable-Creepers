@@ -44,12 +44,12 @@ public class BeeperFlightMoveControl extends MoveControl {
                 this.entity.setPitch(this.wrapDegrees(this.entity.getPitch(), k, this.maxPitchChange));
                 // Original
                 // float upwardSpeed = dY > 0.0 ? speed : -speed;
-                // More straight trajectory
+                // Straighter trajectory
                 float upwardSpeed;
                 if (Math.abs(distXZ) > (double)1.0E-5f) {
                     upwardSpeed = (float)(dY / (distXZ / speed));
                 } else {
-                    upwardSpeed = (float)Math.abs(dY) <= speed ? (float)dY : speed;
+                    upwardSpeed = (float)(Math.abs(dY) <= speed ? dY : speed);
                 }
                 this.entity.setUpwardSpeed(upwardSpeed);
             }
